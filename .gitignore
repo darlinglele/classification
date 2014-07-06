@@ -1,0 +1,4 @@
+_*.py
+raw_features.dat
+weighter/__init__.pyc weighter/informationgain.pyc
+s.pyc
