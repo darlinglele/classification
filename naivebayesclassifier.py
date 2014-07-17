@@ -26,8 +26,8 @@ class NaiveBayesClassifier():
             for name in files:
                 print root, name, '.....'
                 cate_id = root.split('/')[-1]
-                features = self._split(
-                    os.path.join(root, name), encoding=encoding)
+                doc_text = open(os.path.join(root,name)).read().decode(encoding)
+                features = self._split(doc_text)
                 for key, count in features:
                     self.feature_dict.setdefault(key, {})
                     self.feature_dict[key].setdefault('tf', 0)
@@ -45,7 +45,7 @@ class NaiveBayesClassifier():
         start = time()
         weighter = weighter(self.feature_dict, self.cate_dict)
         for f in self.feature_dict:
-            self.feature_dict[f]['weight'] = weighter.get(f)
+            self.feature_dict[f]['weight'] = weighter.get_weight(f)
         reduced_features = sorted(
             [x for x in self.feature_dict.items()], key=lambda x: x[1]['weight'], reverse=True)[0:max_size]
         self.reduced_feature_dict = {x[0]: x[1] for x in reduced_features}
@@ -70,12 +70,11 @@ class NaiveBayesClassifier():
         self.cate_dict = data['cate_dict']
         print 'loading raw features completed, costs %0.2f secs' % (time() - start)
 
-    def _split(self, doc, encoding, text=None):
+    def _split(self, doc_text):
         self.stop_words = self.stop_words or set(
             unicode(x.strip(), 'utf-8') for x in open('stopwords.dic', 'r'))
         try:
-            content = text or open(doc).read().decode(encoding)
-            seg_list = self.cutter.cut(content, cut_all=False)
+            seg_list = self.cutter.cut(doc_text, cut_all=False)
             zh_vocabulaly = re.compile(ur"([\u4E00-\u9FA5]+$)")
             feature_lst = [x.strip()
                            for x in seg_list if zh_vocabulaly.match(x) and x not in self.stop_words]
@@ -85,8 +84,11 @@ class NaiveBayesClassifier():
             counter = Counter(feature_lst)
             return [(x, counter[x]) for x in counter]
 
-    def predict(self, doc, encoding='utf-8'):
-        return sorted([(x, self._prob(doc, x, encoding)) for x in self.cate_dict], key=lambda x: x[1], reverse=True)[0]
+    def predict(self, doc_path, encoding='utf-8'):
+        return sorted([(x, self._prob(x, encoding,doc_path=doc_path)) for x in self.cate_dict], key=lambda x: x[1], reverse=True)[0][0]
+
+    def predict_text(self, doc_text, encoding='utf-8'):
+        return sorted([(x, self._prob(x,encoding,doc_text=doc_text)) for x in self.cate_dict], key=lambda x: x[1], reverse=True)[0][0]
 
     def test(self, test_data):
         start = time()
@@ -96,7 +98,7 @@ class NaiveBayesClassifier():
             for name in files:
                 cate_id = root.split('/')[-1]
                 print cate_id, name
-                label = self.predict(os.path.join(root, name))[0]
+                label = self.predict(os.path.join(root, name))
                 total += 1
                 if cate_id != label:
                     errors += 1
@@ -104,18 +106,23 @@ class NaiveBayesClassifier():
         print 'testing completed, total: %d, errors: %d, error rate:%0.2f, costs: %0.2f' % (total, errors, 100 * errors / total, time() - start)
         return errors / total
 
-    def _prob(self, doc, cate_id, encoding):
-        return self._doc_prob(doc, cate_id, encoding) * self._cate_prob(cate_id)
+    def _prob(self, cate_id, encoding, doc_path=None, doc_text=None):
+        if (doc_path or doc_text) == None:
+            raise Exception('doc_path and doc_text should not both None')
+        doc_path = doc_path or hash(doc_text)
+        if doc_path in self.cache['feature_lst']:
+            feature_lst = self.cache['feature_lst'][doc_path]
+        else:
+            doc_text = doc_text or open(doc_path).read().decode(encoding)
+            feature_lst = [x[0] for x in self._split(doc_text)]
+            self.cache['feature_lst'] = {doc_path: feature_lst}
+
+        return self._doc_prob(feature_lst, cate_id) * self._cate_prob(cate_id)
 
     def _cate_prob(self, cate_id):
         return Decimal(self.cate_dict.get(cate_id, 0)) / sum(self.cate_dict.itervalues())
 
-    def _doc_prob(self, doc, cate_id, encoding):
-        if doc in self.cache['feature_lst']:
-            feature_lst = self.cache['feature_lst'][doc]
-        else:
-            feature_lst = [x[0] for x in self._split(doc, encoding)]
-            self.cache['feature_lst'] = {doc: feature_lst}
+    def _doc_prob(self, feature_lst, cate_id):
         doc_prob = Decimal(1.0)
         for feature in feature_lst:
             if feature in self.reduced_feature_dict:
@@ -138,8 +145,9 @@ class NaiveBayesClassifier():
 
 if __name__ == '__main__':
     classifier = NaiveBayesClassifier(cutter=jieba)
-    classifier.train('../data_train/')
+    # classifier.train('data_train/')
     # classifier.dump('raw_features.dat')
-    # classifier.load('raw_features.dat')
+    classifier.load('raw_features.dat')
     classifier.reduce(max_size=450, weighter=InformationGain)
-    print classifier.test('../data_test/')
+    for x in classifier.reduced_feature_dict.keys():
+        print x.encode('utf-8')
