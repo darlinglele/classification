@@ -1,6 +1,5 @@
 from math import log
 
-
 def select_feature(dataset, features):
     info_gains = [(info_gain(dataset, x), x) for x in features]
     return max(info_gains)[1]
@@ -63,10 +62,13 @@ def predict(tree, sample_vector):
 
 if __name__ == '__main__':
 
-    dataset = [map(int, x.strip().split('  ')) for x in open('data/lenses.data')]
+    dataset = [map(int, x.strip().split('  ')) for x in open('lenses.data')]
     features = [x for x in xrange(len(dataset[0]) - 1)]
 
-    tree = build_tree(dataset, features)
 
-    for x in dataset:
-        print x[-1], predict(tree, x)
+    print info_gain(dataset,0)
+    print entropy(dataset)
+    # tree = build_tree(dataset, features)
+
+    # for x in dataset:
+    #     print x[-1], predict(tree, x)
