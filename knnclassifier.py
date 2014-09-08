@@ -109,7 +109,7 @@ class KNNClassifier():
 if __name__ == '__main__':
 
     X = np.array([[2, 3], [5, 4], [9, 6], [4, 7], [8, 1], [7, 2]])
-    # tree = build_tree(X, 0)
+    
     dist = euclid
     target = [2, 0]
 

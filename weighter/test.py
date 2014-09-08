@@ -1,17 +1,17 @@
-import numpy
-from decimal import *
 import unittest
 from time import time
+
 from informationgain import InformationGain
+
 
 class TestInformationGain(unittest.TestCase):
 
     def setUp(self):
         self.feature_dict = {
-            'a': {'cf': {'c1': 2, 'c2': 0}, 'df': 2},
-            'b': {'cf': {'c1': 1, 'c2': 0}, 'df': 1},
-            'c': {'cf': {'c1': 1, 'c2': 1}, 'df': 2},
-            'd': {'cf': {'c1': 1, 'c2': 2}, 'df': 3}}
+            'a': {'c1': 2, 'c2': 0},
+            'b': {'c1': 1, 'c2': 0},
+            'c': {'c1': 1, 'c2': 1},
+            'd': {'c1': 1, 'c2': 2}}
         self.cate_dict = {'c1': 2, 'c2': 2}
         self.weighter = InformationGain(self.feature_dict, self.cate_dict)
 
